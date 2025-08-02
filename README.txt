@@ -1,7 +1,13 @@
 
-### **1. Requirements**
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/)
+Requirements
+- Docker – for containerized deployment
+- Docker Compose – for orchestrating multiple containers
+- Python 3.11 – base programming language
+- Flask – web framework for building APIs and simple UI
+- psycopg2 – PostgreSQL database driver for Python
+- Jinja2 – templating engine (used for HTML pages)
+- PostgreSQL 15 – relational database
+
 
 docker compose build --no-cache
 docker compose up -d
