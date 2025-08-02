@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS purchases (
     id SERIAL PRIMARY KEY,
     user_id UUID NOT NULL,
-    supermarket_id INT NOT NULL,
+    supermarket_id TEXT NOT NULL,
     timestamp TIMESTAMP NOT NULL,
     total_amount NUMERIC NOT NULL
 );

@@ -35,3 +35,14 @@ services:
       DB_USER: icash
       DB_PASS: icashpass
 
+  data_loader:
+    build: ./data_loader
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_NAME: icashdb
+      DB_USER: icash
+      DB_PASS: icashpass
+    volumes:
+      - ./db:/db
