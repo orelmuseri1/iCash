@@ -22,3 +22,4 @@ COPY products(name, price)
 FROM '/docker-entrypoint-initdb.d/Products_list.csv'
 DELIMITER ','
 CSV HEADER;
+
