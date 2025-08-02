@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: icash
+      POSTGRES_PASSWORD: icashpass
+      POSTGRES_DB: icashdb
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./db/Products_list.csv:/docker-entrypoint-initdb.d/Products_list.csv
+    ports:
+      - "5432:5432"
+
+  pos_app:
+    build: ./pos_app
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_NAME: icashdb
+      DB_USER: icash
+      DB_PASS: icashpass
+
+  analytics_app:
+    build: ./analytics_app
+    depends_on:
+      - db
+    ports:
+      - "5001:5000"
+    environment:
+      DB_HOST: db
+      DB_NAME: icashdb
+      DB_USER: icash
+      DB_PASS: icashpass
+
