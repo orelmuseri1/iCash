@@ -4,18 +4,13 @@ CREATE TABLE IF NOT EXISTS products (
     price NUMERIC NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS purchases (
+CREATE TABLE purchases (
     id SERIAL PRIMARY KEY,
     user_id UUID NOT NULL,
     supermarket_id TEXT NOT NULL,
     timestamp TIMESTAMP NOT NULL,
+    items_list TEXT NOT NULL,
     total_amount NUMERIC NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS purchase_items (
-    id SERIAL PRIMARY KEY,
-    purchase_id INT REFERENCES purchases(id),
-    product_id INT REFERENCES products(id)
 );
 
 COPY products(name, price)

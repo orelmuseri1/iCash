@@ -56,32 +56,35 @@ def create_purchase():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT id, name, price FROM products;")
-    product_map = {name.lower(): {"id": pid, "price": price} for pid, name, price in cur.fetchall()}
+    # Get product prices
+    cur.execute("SELECT name, price FROM products;")
+    price_map = {name.lower(): price for name, price in cur.fetchall()}
 
     total_amount = 0
-    purchased_items = []
+    items_list_parts = []
     for name, qty in products_data.items():
         product_key = name.lower()
-        if product_key not in product_map:
+        if product_key not in price_map:
             conn.close()
             return jsonify({"error": f"Product '{name}' not found"}), 400
-        product_info = product_map[product_key]
-        total_amount += float(product_info["price"]) * int(qty)
-        for _ in range(int(qty)):
-            purchased_items.append(product_info["id"])
 
-    # Insert purchase
+        price = float(price_map[product_key])
+        qty = int(qty)
+        total_amount += price * qty
+
+        if qty > 1:
+            items_list_parts.append(f"{name}x{qty}")
+        else:
+            items_list_parts.append(name)
+
+    items_str = ",".join(items_list_parts)
+
     cur.execute("""
-        INSERT INTO purchases (user_id, supermarket_id, timestamp, total_amount)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO purchases (user_id, supermarket_id, timestamp, items_list, total_amount)
+        VALUES (%s, %s, %s, %s, %s)
         RETURNING id;
-    """, (user_id, supermarket_id, datetime.now(), total_amount))
+    """, (user_id, supermarket_id, datetime.now(), items_str, total_amount))
     purchase_id = cur.fetchone()[0]
-
-    # Insert purchase items
-    for product_id in purchased_items:
-        cur.execute("INSERT INTO purchase_items (purchase_id, product_id) VALUES (%s, %s);", (purchase_id, product_id))
 
     conn.commit()
     cur.close()
@@ -91,7 +94,7 @@ def create_purchase():
         "purchase_id": purchase_id,
         "user_id": user_id,
         "total_amount": total_amount,
-        "products": {k: v for k, v in products_data.items() if int(v) > 0}
+        "items_list": items_str
     })
 
 if __name__ == "__main__":

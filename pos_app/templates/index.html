@@ -40,7 +40,6 @@
         const supermarket_id = document.getElementById("supermarket_id").value;
         const user_id = document.getElementById("user_id").value;
 
-        // Collect quantities > 0
         const products = {};
         {% for p in products %}
             const qty_{{ p.replace(" ", "_") }} = parseInt(document.getElementById("qty_{{ p }}").value) || 0;
