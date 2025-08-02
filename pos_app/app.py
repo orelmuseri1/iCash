@@ -34,47 +34,42 @@ def index():
 
 @app.route("/purchase", methods=["POST"])
 def create_purchase():
-    # Get request data (JSON preferred)
     if request.is_json:
         data = request.get_json()
     else:
-        data = request.form.to_dict(flat=False)
-        data["items"] = data.get("items", [])
-        if isinstance(data["items"], str):
-            data["items"] = [data["items"]]
+        return jsonify({"error": "Request must be JSON"}), 400
 
     supermarket_id = data.get("supermarket_id")
     user_id = data.get("user_id")
-    items = data.get("items", [])
+    products_data = data.get("products", {})
 
     # Validation
-    if not supermarket_id or not items:
-        return jsonify({"error": "supermarket_id and items are required"}), 400
+    if not supermarket_id or not isinstance(products_data, dict) or len(products_data) == 0:
+        return jsonify({"error": "supermarket_id and products with quantity > 0 are required"}), 400
 
-    # Check UUID validity
+    # Validate user_id (UUID)
     if user_id and not is_valid_uuid(user_id):
         return jsonify({"error": "Invalid user_id, must be a valid UUID format"}), 400
     if not user_id:
         user_id = str(uuid.uuid4())
 
-    # Connect to DB
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Load products mapping
     cur.execute("SELECT id, name, price FROM products;")
     product_map = {name.lower(): {"id": pid, "price": price} for pid, name, price in cur.fetchall()}
 
-    # Calculate total & prepare items
     total_amount = 0
-    item_ids = []
-    for item in items:
-        item_lower = item.lower()
-        if item_lower not in product_map:
+    purchased_items = []
+    for name, qty in products_data.items():
+        product_key = name.lower()
+        if product_key not in product_map:
             conn.close()
-            return jsonify({"error": f"Product '{item}' not found"}), 400
-        total_amount += float(product_map[item_lower]["price"])
-        item_ids.append(product_map[item_lower]["id"])
+            return jsonify({"error": f"Product '{name}' not found"}), 400
+        product_info = product_map[product_key]
+        total_amount += float(product_info["price"]) * int(qty)
+        for _ in range(int(qty)):
+            purchased_items.append(product_info["id"])
 
     # Insert purchase
     cur.execute("""
@@ -85,9 +80,8 @@ def create_purchase():
     purchase_id = cur.fetchone()[0]
 
     # Insert purchase items
-    for product_id in item_ids:
-        cur.execute("INSERT INTO purchase_items (purchase_id, product_id) VALUES (%s, %s);",
-                    (purchase_id, product_id))
+    for product_id in purchased_items:
+        cur.execute("INSERT INTO purchase_items (purchase_id, product_id) VALUES (%s, %s);", (purchase_id, product_id))
 
     conn.commit()
     cur.close()
@@ -97,7 +91,7 @@ def create_purchase():
         "purchase_id": purchase_id,
         "user_id": user_id,
         "total_amount": total_amount,
-        "items": items
+        "products": {k: v for k, v in products_data.items() if int(v) > 0}
     })
 
 if __name__ == "__main__":
