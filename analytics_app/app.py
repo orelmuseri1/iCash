@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 import psycopg2
 import os
 from collections import Counter
@@ -15,8 +15,57 @@ def get_db_connection():
     )
 
 @app.route("/")
-def home():
-    return "Analytics App is running!"
+def index():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Unique customers
+    cur.execute("SELECT COUNT(DISTINCT user_id) FROM purchases;")
+    unique_customers = cur.fetchone()[0]
+
+    # Loyal customers
+    cur.execute("""
+        SELECT user_id
+        FROM purchases
+        GROUP BY user_id
+        HAVING COUNT(*) >= 3;
+    """)
+    loyal_customers = [row[0] for row in cur.fetchall()]
+
+    # Top products
+    cur.execute("SELECT items_list FROM purchases;")
+    rows = cur.fetchall()
+    conn.close()
+
+    from collections import Counter
+    counter = Counter()
+    for (items_str,) in rows:
+        if not items_str:
+            continue
+        items = items_str.split(",")
+        for item in items:
+            if "x" in item:
+                name, qty = item.split("x")
+                try:
+                    qty = int(qty)
+                except ValueError:
+                    qty = 1
+                counter[name] += qty
+            else:
+                counter[item] += 1
+
+    sorted_items = counter.most_common()
+    if len(sorted_items) <= 3:
+        threshold = sorted_items[-1][1] if sorted_items else 0
+    else:
+        threshold = sorted_items[2][1]
+    top_products = {prod: count for prod, count in counter.items() if count >= threshold}
+
+    return render_template("index.html",
+                           unique_customers=unique_customers,
+                           loyal_customers=loyal_customers,
+                           top_products=top_products)
+
 
 @app.route("/unique_customers", methods=["GET"])
 def unique_customers():
