@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>POS Purchase</title>
+    <style>
+        body { font-family: Arial; margin: 30px; }
+        .container { max-width: 500px; }
+        label { display: block; margin-top: 10px; }
+        button { margin-top: 20px; padding: 10px 20px; }
+        #result { display: none; margin-top: 20px; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>POS Purchase</h1>
+    <label>Supermarket:
+        <select id="supermarket_id">
+            {% for s in supermarkets %}
+            <option value="{{ s }}">{{ s }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>User ID (optional):
+        <input type="text" id="user_id" placeholder="Leave empty for new user">
+    </label>
+    <label>Items:</label>
+    {% for p in products %}
+        <input type="checkbox" name="items" value="{{ p }}"> {{ p }} <br>
+    {% endfor %}
+    <button onclick="sendPurchase()">Submit</button>
+    <div id="result"></div>
+</div>
+<script>
+    async function sendPurchase() {
+        const supermarket_id = document.getElementById("supermarket_id").value;
+        const user_id = document.getElementById("user_id").value;
+        const items = Array.from(document.querySelectorAll('input[name="items"]:checked')).map(el => el.value);
+
+        const body = { supermarket_id, user_id, items };
+        const resultElement = document.getElementById("result");
+
+        try {
+            const res = await fetch("/purchase", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                resultElement.style.display = "block";
+                resultElement.style.color = "red";
+                resultElement.innerText = data.error || "Unknown error occurred";
+                return;
+            }
+
+            resultElement.style.display = "block";
+            resultElement.style.color = "black";
+            resultElement.innerText = JSON.stringify(data, null, 2);
+        } catch (error) {
+            resultElement.style.display = "block";
+            resultElement.style.color = "red";
+            resultElement.innerText = "Network error: " + error;
+        }
+    }
+</script>
+</body>
+</html>
