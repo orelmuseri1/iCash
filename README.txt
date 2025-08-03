@@ -21,7 +21,6 @@ watch DB:
    docker exec -it matala-db-1 psql -U icash -d icashdb
    SELECT COUNT(*) FROM products;
    SELECT COUNT(*) FROM purchases;
-   SELECT COUNT(*) FROM purchase_items;
 
 Purchase UI:
 http://localhost:5000/
