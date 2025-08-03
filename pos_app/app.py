@@ -41,17 +41,20 @@ def create_purchase():
 
     supermarket_id = data.get("supermarket_id")
     user_id = data.get("user_id")
-    products_data = data.get("products", {})
+    items = data.get("items", [])
 
     # Validation
-    if not supermarket_id or not isinstance(products_data, dict) or len(products_data) == 0:
-        return jsonify({"error": "supermarket_id and products with quantity > 0 are required"}), 400
+    if not supermarket_id or not items:
+        return jsonify({"error": "supermarket_id and at least one item required"}), 400
 
-    # Validate user_id (UUID)
+    # Validate UUID
     if user_id and not is_valid_uuid(user_id):
         return jsonify({"error": "Invalid user_id, must be a valid UUID format"}), 400
     if not user_id:
         user_id = str(uuid.uuid4())
+
+    # Remove duplicates (only one unit of each item)
+    items = list(set(items))
 
     conn = get_db_connection()
     cur = conn.cursor()
@@ -61,29 +64,21 @@ def create_purchase():
     price_map = {name.lower(): price for name, price in cur.fetchall()}
 
     total_amount = 0
-    items_list_parts = []
-    for name, qty in products_data.items():
-        product_key = name.lower()
-        if product_key not in price_map:
+    for item in items:
+        if item.lower() not in price_map:
             conn.close()
-            return jsonify({"error": f"Product '{name}' not found"}), 400
+            return jsonify({"error": f"Product '{item}' not found"}), 400
+        total_amount += float(price_map[item.lower()])
 
-        price = float(price_map[product_key])
-        qty = int(qty)
-        total_amount += price * qty
+    # Convert list to comma-separated string
+    items_list = ",".join(items)
 
-        if qty > 1:
-            items_list_parts.append(f"{name}x{qty}")
-        else:
-            items_list_parts.append(name)
-
-    items_str = ",".join(items_list_parts)
-
+    # Insert purchase
     cur.execute("""
         INSERT INTO purchases (user_id, supermarket_id, timestamp, items_list, total_amount)
         VALUES (%s, %s, %s, %s, %s)
         RETURNING id;
-    """, (user_id, supermarket_id, datetime.now(), items_str, total_amount))
+    """, (user_id, supermarket_id, datetime.now(), items_list, total_amount))
     purchase_id = cur.fetchone()[0]
 
     conn.commit()
@@ -94,7 +89,7 @@ def create_purchase():
         "purchase_id": purchase_id,
         "user_id": user_id,
         "total_amount": total_amount,
-        "items_list": items_str
+        "items_list": items_list
     })
 
 if __name__ == "__main__":

@@ -23,7 +23,7 @@ def index():
     cur.execute("SELECT COUNT(DISTINCT user_id) FROM purchases;")
     unique_customers = cur.fetchone()[0]
 
-    # Loyal customers
+    # Loyal customers (3+ purchases)
     cur.execute("""
         SELECT user_id
         FROM purchases
@@ -32,27 +32,18 @@ def index():
     """)
     loyal_customers = [row[0] for row in cur.fetchall()]
 
-    # Top products
+    # Top products (parse items_list)
     cur.execute("SELECT items_list FROM purchases;")
     rows = cur.fetchall()
     conn.close()
 
-    from collections import Counter
     counter = Counter()
     for (items_str,) in rows:
         if not items_str:
             continue
         items = items_str.split(",")
         for item in items:
-            if "x" in item:
-                name, qty = item.split("x")
-                try:
-                    qty = int(qty)
-                except ValueError:
-                    qty = 1
-                counter[name] += qty
-            else:
-                counter[item] += 1
+            counter[item] += 1  # כל פריט נספר פעם אחת
 
     sorted_items = counter.most_common()
     if len(sorted_items) <= 3:
@@ -66,15 +57,14 @@ def index():
                            loyal_customers=loyal_customers,
                            top_products=top_products)
 
-
 @app.route("/unique_customers", methods=["GET"])
 def unique_customers():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("SELECT COUNT(DISTINCT user_id) FROM purchases;")
-    unique_count = cur.fetchone()[0]
+    count = cur.fetchone()[0]
     conn.close()
-    return jsonify({"unique_customers": unique_count})
+    return jsonify({"unique_customers": count})
 
 @app.route("/loyal_customers", methods=["GET"])
 def loyal_customers():
@@ -86,9 +76,9 @@ def loyal_customers():
         GROUP BY user_id
         HAVING COUNT(*) >= 3;
     """)
-    loyal_customers = [row[0] for row in cur.fetchall()]
+    customers = [row[0] for row in cur.fetchall()]
     conn.close()
-    return jsonify({"loyal_customers": loyal_customers})
+    return jsonify({"loyal_customers": customers})
 
 @app.route("/top_products", methods=["GET"])
 def top_products():
@@ -104,29 +94,16 @@ def top_products():
             continue
         items = items_str.split(",")
         for item in items:
-            if "x" in item:
-                name, qty = item.split("x")
-                try:
-                    qty = int(qty)
-                except ValueError:
-                    qty = 1
-                counter[name] += qty
-            else:
-                counter[item] += 1
+            counter[item] += 1
 
-    if not counter:
-        return jsonify({"top_products": {}})
-
-    # Get the top 3 counts (כולל מוצרים באותו דירוג)
     sorted_items = counter.most_common()
     if len(sorted_items) <= 3:
-        threshold = sorted_items[-1][1]
+        threshold = sorted_items[-1][1] if sorted_items else 0
     else:
         threshold = sorted_items[2][1]
+    top_products = {prod: count for prod, count in counter.items() if count >= threshold}
 
-    top_products_counts = {prod: count for prod, count in counter.items() if count >= threshold}
-
-    return jsonify({"top_products": top_products_counts})
+    return jsonify({"top_products": top_products})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

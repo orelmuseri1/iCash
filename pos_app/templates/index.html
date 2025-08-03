@@ -7,7 +7,6 @@
         body { font-family: Arial; margin: 30px; }
         .container { max-width: 500px; }
         label { display: block; margin-top: 10px; }
-        input[type="number"] { width: 50px; margin-left: 10px; }
         button { margin-top: 20px; padding: 10px 20px; }
         #result { display: none; margin-top: 20px; padding: 10px; border: 1px solid #ccc; white-space: pre-wrap; }
     </style>
@@ -25,11 +24,10 @@
     <label>User ID (optional):
         <input type="text" id="user_id" placeholder="Leave empty for new user">
     </label>
-    <h3>Products (set quantity):</h3>
+    <h3>Products:</h3>
     {% for p in products %}
         <div>
-            {{ p }}:
-            <input type="number" id="qty_{{ p }}" name="qty_{{ p }}" value="0" min="0">
+            <input type="checkbox" name="items" value="{{ p }}"> {{ p }}
         </div>
     {% endfor %}
     <button onclick="sendPurchase()">Submit</button>
@@ -39,16 +37,9 @@
     async function sendPurchase() {
         const supermarket_id = document.getElementById("supermarket_id").value;
         const user_id = document.getElementById("user_id").value;
+        const items = Array.from(document.querySelectorAll('input[name="items"]:checked')).map(el => el.value);
 
-        const products = {};
-        {% for p in products %}
-            const qty_{{ p.replace(" ", "_") }} = parseInt(document.getElementById("qty_{{ p }}").value) || 0;
-            if (qty_{{ p.replace(" ", "_") }} > 0) {
-                products["{{ p }}"] = qty_{{ p.replace(" ", "_") }};
-            }
-        {% endfor %}
-
-        const body = { supermarket_id, user_id, products };
+        const body = { supermarket_id, user_id, items };
         const resultElement = document.getElementById("result");
 
         try {
