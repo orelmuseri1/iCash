@@ -15,8 +15,8 @@ docker compose up -d
 If needed :
      docker compose down -v
 load data (The loader scripts must run after DB is up):
-   docker compose run --rm data_loader python load_purchases.py
    docker compose run --rm data_loader python load_products.py
+   docker compose run --rm data_loader python load_purchases.py
 watch DB:
    docker exec -it matala-db-1 psql -U icash -d icashdb
    SELECT COUNT(*) FROM products;
